@@ -1,97 +1,76 @@
-# 🤖 Meeting Validator Assistant
+# 🤖 Meeting Audit & Validation System (Back-end Architecture)
 
-[![n8n](https://img.shields.io/badge/Workflow-n8n-FF6D5A?style=for-the-badge&logo=n8n&logoColor=white)](https://n8n.io)
-[![React](https://img.shields.io/badge/Frontend-React-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
-[![Gemini](https://img.shields.io/badge/AI-Google%20Gemini-4285F4?style=for-the-badge&logo=googlegemini&logoColor=white)](https://ai.google.dev/)
-
-An advanced AI-powered meeting auditing system that validates Minutes of Meeting (MoM) against transcripts, ensures agenda compliance, and analyzes client sentiment.
+A robust LLM-orchestration system designed for automated semantic auditing of meeting data. This system validates formal documentation against raw verbal data to ensure integrity, compliance, and sentiment alignment.
 
 ---
 
-## ✨ Key Features
+## 🛠️ Core Functional Modules
 
-- **📑 MoM Accuracy Validation**: Automatically identifies accurate points, incorrect statements, and missing information in your meeting minutes.
-- **🎯 Agenda Coverage**: Calculates the percentage of agenda items discussed during the session.
-- **🎭 Client Mood Detection**: Analyzes client statements to detect sentiment (Positive, Neutral, Negative) and highlights specific mood signals.
-- **🚫 Out-of-Scope Detection**: Flags topics discussed that were not part of the initial agenda.
-- **⚠️ Risk Assessment**: Provides an overall risk level (Low, Medium, High) based on meeting discrepancies and sentiment.
-- **🎨 Glassmorphic UI**: A premium, responsive dashboard built with Framer Motion for smooth animations and a modern feel.
+### 1. Semantic Integrity Validation (MoM vs. Transcript)
+The system performs a high-granularity cross-reference between the **Minutes of Meeting (MoM)** and the **Raw Transcript**. 
+- **Inference Goal**: Identify factual discrepancies and logical omissions.
+- **Methodology**: LLM-based verification where the transcript is treated as the immutable source of truth.
 
----
+### 2. Agenda Compliance Tracking
+Automated analysis of conversation flow against predefined agenda items.
+- **Logical Flow**: Extracts discussion points and maps them to an input array of agenda objects.
+- **Output**: Coverage metrics and evidence-based confirmation for each discussed item.
 
-## 🏗️ Technical Architecture
+### 3. Client Sentiment & Behavioral Analysis
+Targeted extraction of specific speaker entities (Client/Stakeholder) to evaluate tonal variations.
+- **Signals**: Identification of explicit verbal signals that indicate project risk or satisfaction.
+- **Classification**: Sentiment categorization (Positive/Neutral/Negative) mapped to raw statement evidence.
 
-### Frontend (User Interface)
-- **Framework**: React.js
-- **Styling**: Vanilla CSS with CSS Variables for a robust design system.
-- **Animations**: `framer-motion` for complex transitions and state-based animations.
-- **Icons**: `lucide-react` for consistent, crisp iconography.
-- **Data Flow**: Handles file uploads and orchestrates the multi-stage analysis progress UI before displaying results.
-
-### Backend (n8n Workflow)
-The brain of the application is a sophisticated **n8n workflow** that leverages Large Language Models (LLMs) for deep semantic analysis.
-
-#### workflow Breakdown:
-
-1.  **Webhook Trigger**: Receives the meeting documents (Agenda, Transcript, MoM) via a POST request.
-2.  **Meeting Documents Node**: Extracts and prepares the raw text for processing.
-3.  **Parallel AI Validation (Google Gemini 2.5 Flash)**:
-    *   **MoM Accuracy Chain**: Cross-references the MoM against the transcript to find errors.
-    *   **Agenda Validation Chain**: Scans the transcript for evidence of each agenda item.
-    *   **Client Mood Chain**: Specifically filters and analyzes statements made by clients.
-    *   **Out-of-Scope Chain**: Identifies "scope creep" by comparing discussed topics to the agenda.
-4.  **Parsing Logic**: Specialized JavaScript nodes clean the AI outputs, handling potential formatting issues to ensure valid JSON data.
-5.  **Join & Report Generation**: A final aggregation node joins all parallel outputs and calculates meta-metrics (like % coverage and risk level).
-6.  **Response Node**: Returns the structured report to the React frontend.
+### 4. Scope Creep Detection
+Identifies discussion topics that deviate from the authorized meeting scope (Agenda).
+- **Mechanism**: Differencing the discovered semantic topics in the transcript against the agenda's domain boundaries.
 
 ---
 
-## 🚀 Setup & Installation
+## 🏗️ Technical Implementation (n8n Workflow)
 
-### 1. n8n Workflow Setup
-1.  Install and run [n8n](https://n8n.io/get-started/).
-2.  Import the `AI_Meeting_Validation.json` file found in the root of this repository.
-3.  Configure your **Google Gemini API credentials** in the LangChain nodes.
-4.  Activate the workflow and copy the **Production Webhook URL**.
+The system is implemented as an asynchronous orchestration pipeline within **n8n**, utilizing **Google Gemini 2.5 Flash** for high-throughput semantic processing.
 
-### 2. Frontend Configuration
-1.  Clone the repository.
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Open `src/App.jsx` and update the `YOUR_N8N_WEBHOOK_URL` constant with your n8n webhook URL:
-    ```javascript
-    const YOUR_N8N_WEBHOOK_URL = "https://your-n8n-instance.com/webhook/analyze-meeting";
-    ```
-4.  Start the development server:
-    ```bash
-    npm start
-    ```
+### Workflow Architecture:
+- **Ingestion Tier**: REST API Webhook accepting structured JSON payloads containing `agenda`, `transcript`, and `mom` (Minutes of Meeting) as string buffers.
+- **Parallel Processing Layer**: 
+    - **Extraction Chains**: Specialized LLM chains running concurrent validation tasks to minimize latency.
+    - **Prompt Engineering**: System instructions focused on zero-shot extraction with strict JSON enforcement.
+- **Logic & Parsing Tier**: 
+    - Post-processing nodes to normalize LLM outputs (removal of markdown artifacts, JSON sanitization).
+    - Heuristic-based logic to aggregate results from parallel chains.
+- **Risk Assessment Engine**: 
+    - A centralized logic node that calculates an **Overall Risk Level** based on:
+        - Presence of factual discrepancies in MoM.
+        - Negative sentiment triggers from client-side statements.
+        - Volume of out-of-scope discussion topics.
+- **Egress Tier**: Synchronous webhook response delivering a unified analysis report.
 
 ---
 
-## 📊 How It Works (Internal Logic)
+## 🔧 Workflow Configuration
 
-The system treats the **Transcript** as the "Source of Truth." The AI models are instructed to strictly follow these rules:
-- **No Assumptions**: If it's not in the transcript, it didn't happen.
-- **Strict JSON**: All outputs are formatted as JSON for seamless integration.
-- **Risk Calculation**:
-    - **High Risk**: Triggered by Negative client mood or critical MoM inaccuracies.
-    - **Medium Risk**: Triggered by out-of-scope discussions or minor discrepancies.
-    - **Low Risk**: High agenda coverage and accurate MoM.
+### System Requirements
+- **Orchestrator**: n8n (Self-hosted or Cloud)
+- **Model**: Google Gemini 2.5 Flash (via LangChain integration)
+- **Protocol**: HTTP/HTTPS POST
+
+### Integration Logic
+The pipeline expects a `POST` request to the following endpoint structure:
+```json
+{
+  "agenda": "string",
+  "transcript": "string",
+  "mom": "string"
+}
+```
+
+### Data Normalization
+AI outputs are passed through custom JavaScript nodes to ensure all string-based LLM responses are parsed into machine-readable objects, enabling downstream programmatic consumption of the audit data.
 
 ---
 
-## 🎨 Design System
-
-The UI uses a curated color palette:
-- **Primary Gradient**: `#6366f1` to `#a855f7` (Indigo to Purple)
-- **Success**: `#10b981` (Emerald)
-- **Warning**: `#f59e0b` (Amber)
-- **Danger**: `#ef4444` (Rose)
-- **Background**: Modern deep navy/black theme with translucent cards.
-
----
-
-Developed with ❤️ for streamlined meeting management.
+## 📊 Technical Use Cases
+- **automated Compliance Auditing**: Ensuring regulated meetings follow strict agendas.
+- **Project Risk Mitigation**: Early detection of client dissatisfaction via automated transcript sentiment analysis.
+- **Documentation Quality Assurance**: Verifying that human-written meeting minutes accurately reflect verbal agreements.
