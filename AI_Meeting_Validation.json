@@ -1,0 +1,495 @@
+{
+  "name": "AI Meeting Validation",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5facf9aa-4e34-4959-96bc-e68ff8e3d6cd",
+              "name": "agenda",
+              "value": "={{ $json.body.agenda }}",
+              "type": "string"
+            },
+            {
+              "id": "51d92994-81d9-4f5c-9bf0-efcd9512aae0",
+              "name": "transcript",
+              "value": "={{ $json.body.transcript }}",
+              "type": "string"
+            },
+            {
+              "id": "d3ba5b6d-ce5e-413b-88da-38f5a5cdebb3",
+              "name": "mom",
+              "value": "={{ $json.body.mom }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "id": "89dad571-0644-4a68-a10b-23e5c2141345",
+      "name": "Meeting Documents"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        380,
+        -300
+      ],
+      "id": "cf5723e4-cd66-424a-8db1-25b9181076f8",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "HVe0U53T9cBRKobi",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.text;\n\n// Remove ```json and ```\nconst cleanText = rawText\n  .replace(/```json/g, \"\")\n  .replace(/```/g, \"\")\n  .trim();\n\nreturn JSON.parse(cleanText);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        -120
+      ],
+      "id": "3ee30eca-1cca-42f2-b298-81eadc673e5a",
+      "name": "Parse Agenda Validation"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI meeting auditor.\n\nMEETING TRANSCRIPT:\n{{$json.transcript}}\n\nMINUTES OF MEETING (MoM):\n{{$json.mom}}\n\nTask:\n1. Identify MoM points that are accurate.\n2. Identify MoM points that are incorrect.\n3. Identify important points discussed but missing from MoM.\n\nRules:\n- Transcript is the only source of truth\n- Do not assume anything\n- Return strictly JSON\n\nExpected format:\n{\n  \"mom_validation\": {\n    \"accurate_points\": [],\n    \"incorrect_points\": [],\n    \"missing_points\": []\n  }\n}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        760,
+        -320
+      ],
+      "id": "bed3c6e7-ff94-48bc-9b04-30943023ce08",
+      "name": "MoM Accuracy Validation"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI meeting auditor.\n\nMEETING AGENDA:\n{{$json.agenda}}\n\nMEETING TRANSCRIPT:\n{{$json.transcript}}\n\nTask:\nFor each agenda item:\n1. Check if it was discussed.\n2. Provide evidence if discussed.\n3. Mark missed items.\n\nRules:\n- Use transcript as the only source of truth\n- Return output strictly in JSON format\n\nExpected format:\n{\n  \"agenda_validation\": [\n    {\n      \"agenda_item\": \"\",\n      \"discussed\": true,\n      \"evidence\": \"\"\n    }\n  ]\n}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        760,
+        -120
+      ],
+      "id": "d98ce369-163c-44db-ab52-9220da72fc70",
+      "name": "Agenda Validation"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -460
+      ],
+      "id": "a169d004-53b5-4a61-8ea3-3afb55f351f7",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "HVe0U53T9cBRKobi",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.text;\n\nconst cleanText = rawText\n  .replace(/```json/g, \"\")\n  .replace(/```/g, \"\")\n  .trim();\n\nreturn JSON.parse(cleanText);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        -320
+      ],
+      "id": "5ca08b34-23f1-496e-9963-4c29a55ebfdd",
+      "name": "Parse MoM Validation"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI meeting auditor.\n\nAnalyze the CLIENT statements in the meeting transcript below.\n\nMEETING TRANSCRIPT:\n{{$json.transcript}}\n\nTask:\n1. Determine overall client mood (Positive, Neutral, Negative)\n2. Provide short reasons based on statements\n\nRules:\n- Consider only client (John, Tommy) statements\n- Return strictly JSON\n\nExpected format:\n{\n  \"client_mood\": {\n    \"overall\": \"\",\n    \"signals\": []\n  }\n}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        760,
+        60
+      ],
+      "id": "07259c8a-bd40-4d90-a09f-3819bc49e3a9",
+      "name": "Client Mood Detection"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        520,
+        360
+      ],
+      "id": "3b3012b4-be0a-4efc-8cce-e9437b0ea12b",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "HVe0U53T9cBRKobi",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.text;\n\nconst cleanText = rawText\n  .replace(/```json/g, \"\")\n  .replace(/```/g, \"\")\n  .trim();\n\nreturn JSON.parse(cleanText);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        220
+      ],
+      "id": "73eec0e1-b227-462b-b668-ca3e1444beb3",
+      "name": "Parse Out of Scope"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        240,
+        -180
+      ],
+      "id": "5a0893e6-8c74-4a34-946e-f0b51b45586d",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "HVe0U53T9cBRKobi",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI meeting auditor.\n\nMEETING AGENDA:\n{{$json.agenda}}\n\nMEETING TRANSCRIPT:\n{{$json.transcript}}\n\nTask:\nIdentify any discussion topics that were NOT part of the agenda.\n\nRules:\n- Agenda defines scope\n- Transcript is source of truth\n- Return strictly JSON\n\nExpected format:\n{\n  \"out_of_scope_topics\": []\n}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        760,
+        220
+      ],
+      "id": "9eb69e07-8aa9-4555-84c7-0630279f97a0",
+      "name": "Out-of-Scope Detection"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get outputs from previous parsed nodes\nconst agenda = $items(\"Parse Agenda Validation\")[0].json;\nconst mom = $items(\"Parse MoM Validation\")[0].json;\nconst mood = $items(\"Parse Client Mood\")[0].json;\nconst outOfScope = $items(\"Parse Out of Scope\")[0].json;\n\n// Calculate agenda coverage\nconst totalAgendaItems = agenda.agenda_validation.length;\nconst discussedAgendaItems = agenda.agenda_validation.filter(\n  item => item.discussed === true\n).length;\n\n// Determine MoM accuracy status\nlet momStatus = \"Accurate\";\nif (mom.mom_validation.incorrect_points.length > 0 ||\n    mom.mom_validation.missing_points.length > 0) {\n  momStatus = \"Partially Accurate\";\n}\n\n// Risk logic (simple but effective)\nlet riskLevel = \"Low\";\nif (\n  mom.mom_validation.incorrect_points.length > 0 ||\n  outOfScope.out_of_scope_topics.length > 0\n) {\n  riskLevel = \"Medium\";\n}\nif (mood.client_mood.overall === \"Negative\") {\n  riskLevel = \"High\";\n}\n\n// Final report\nreturn {\n  agenda_coverage: `${discussedAgendaItems}/${totalAgendaItems}`,\n  agenda_coverage_percentage: Math.round(\n    (discussedAgendaItems / totalAgendaItems) * 100\n  ),\n  mom_accuracy_status: momStatus,\n  mom_summary: mom.mom_validation,\n  client_mood: mood.client_mood,\n  out_of_scope_topics: outOfScope.out_of_scope_topics,\n  overall_risk_level: riskLevel\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1720,
+        -80
+      ],
+      "id": "57e362bd-65a7-436d-89c8-445ac6849bef",
+      "name": "Final Validation Report"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.text;\n\nconst cleanText = rawText\n  .replace(/```json/g, \"\")\n  .replace(/```/g, \"\")\n  .trim();\n\nreturn JSON.parse(cleanText);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        60
+      ],
+      "id": "f3657d58-6ea7-4176-b4b9-882f89fe2a75",
+      "name": "Parse Client Mood"
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1480,
+        -100
+      ],
+      "id": "5ff55647-fafb-4d7f-b465-cb994d93efd0",
+      "name": "Join All Results"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analyze-meeting",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4e699a4d-71bb-4d55-9d5b-a6adbd79799e",
+      "name": "Webhook",
+      "webhookId": "b86e6d48-b174-4f74-998f-8a07a6324ce6"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1920,
+        -80
+      ],
+      "id": "00e2a824-2d32-4033-9386-96be11986441",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agenda Validation",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meeting Documents": {
+      "main": [
+        [
+          {
+            "node": "Agenda Validation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "MoM Accuracy Validation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Client Mood Detection",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Out-of-Scope Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Agenda Validation": {
+      "main": [
+        [
+          {
+            "node": "Join All Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Agenda Validation": {
+      "main": [
+        [
+          {
+            "node": "Parse Agenda Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "MoM Accuracy Validation",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MoM Accuracy Validation": {
+      "main": [
+        [
+          {
+            "node": "Parse MoM Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Out-of-Scope Detection",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Client Mood Detection": {
+      "main": [
+        [
+          {
+            "node": "Parse Client Mood",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Client Mood Detection",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Out-of-Scope Detection": {
+      "main": [
+        [
+          {
+            "node": "Parse Out of Scope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join All Results": {
+      "main": [
+        [
+          {
+            "node": "Final Validation Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse MoM Validation": {
+      "main": [
+        [
+          {
+            "node": "Join All Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Client Mood": {
+      "main": [
+        [
+          {
+            "node": "Join All Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Parse Out of Scope": {
+      "main": [
+        [
+          {
+            "node": "Join All Results",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Meeting Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Validation Report": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d2f44eff-1a3a-4da7-b065-e7f2eb2e4605",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ac2779e196403c204e438a8d28553e4f16364a35c88307f93eb5b30f207f3cce"
+  },
+  "id": "vxwFEiRNaiaAGzTq",
+  "tags": []
+}

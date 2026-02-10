@@ -1,70 +1,97 @@
-# Getting Started with Create React App
+# 🤖 Meeting Validator Assistant
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+[![n8n](https://img.shields.io/badge/Workflow-n8n-FF6D5A?style=for-the-badge&logo=n8n&logoColor=white)](https://n8n.io)
+[![React](https://img.shields.io/badge/Frontend-React-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
+[![Gemini](https://img.shields.io/badge/AI-Google%20Gemini-4285F4?style=for-the-badge&logo=googlegemini&logoColor=white)](https://ai.google.dev/)
 
-## Available Scripts
+An advanced AI-powered meeting auditing system that validates Minutes of Meeting (MoM) against transcripts, ensures agenda compliance, and analyzes client sentiment.
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## ✨ Key Features
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **📑 MoM Accuracy Validation**: Automatically identifies accurate points, incorrect statements, and missing information in your meeting minutes.
+- **🎯 Agenda Coverage**: Calculates the percentage of agenda items discussed during the session.
+- **🎭 Client Mood Detection**: Analyzes client statements to detect sentiment (Positive, Neutral, Negative) and highlights specific mood signals.
+- **🚫 Out-of-Scope Detection**: Flags topics discussed that were not part of the initial agenda.
+- **⚠️ Risk Assessment**: Provides an overall risk level (Low, Medium, High) based on meeting discrepancies and sentiment.
+- **🎨 Glassmorphic UI**: A premium, responsive dashboard built with Framer Motion for smooth animations and a modern feel.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## 🏗️ Technical Architecture
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Frontend (User Interface)
+- **Framework**: React.js
+- **Styling**: Vanilla CSS with CSS Variables for a robust design system.
+- **Animations**: `framer-motion` for complex transitions and state-based animations.
+- **Icons**: `lucide-react` for consistent, crisp iconography.
+- **Data Flow**: Handles file uploads and orchestrates the multi-stage analysis progress UI before displaying results.
 
-### `npm run build`
+### Backend (n8n Workflow)
+The brain of the application is a sophisticated **n8n workflow** that leverages Large Language Models (LLMs) for deep semantic analysis.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+#### workflow Breakdown:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1.  **Webhook Trigger**: Receives the meeting documents (Agenda, Transcript, MoM) via a POST request.
+2.  **Meeting Documents Node**: Extracts and prepares the raw text for processing.
+3.  **Parallel AI Validation (Google Gemini 2.5 Flash)**:
+    *   **MoM Accuracy Chain**: Cross-references the MoM against the transcript to find errors.
+    *   **Agenda Validation Chain**: Scans the transcript for evidence of each agenda item.
+    *   **Client Mood Chain**: Specifically filters and analyzes statements made by clients.
+    *   **Out-of-Scope Chain**: Identifies "scope creep" by comparing discussed topics to the agenda.
+4.  **Parsing Logic**: Specialized JavaScript nodes clean the AI outputs, handling potential formatting issues to ensure valid JSON data.
+5.  **Join & Report Generation**: A final aggregation node joins all parallel outputs and calculates meta-metrics (like % coverage and risk level).
+6.  **Response Node**: Returns the structured report to the React frontend.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+---
 
-### `npm run eject`
+## 🚀 Setup & Installation
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### 1. n8n Workflow Setup
+1.  Install and run [n8n](https://n8n.io/get-started/).
+2.  Import the `AI_Meeting_Validation.json` file found in the root of this repository.
+3.  Configure your **Google Gemini API credentials** in the LangChain nodes.
+4.  Activate the workflow and copy the **Production Webhook URL**.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 2. Frontend Configuration
+1.  Clone the repository.
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Open `src/App.jsx` and update the `YOUR_N8N_WEBHOOK_URL` constant with your n8n webhook URL:
+    ```javascript
+    const YOUR_N8N_WEBHOOK_URL = "https://your-n8n-instance.com/webhook/analyze-meeting";
+    ```
+4.  Start the development server:
+    ```bash
+    npm start
+    ```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+---
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## 📊 How It Works (Internal Logic)
 
-## Learn More
+The system treats the **Transcript** as the "Source of Truth." The AI models are instructed to strictly follow these rules:
+- **No Assumptions**: If it's not in the transcript, it didn't happen.
+- **Strict JSON**: All outputs are formatted as JSON for seamless integration.
+- **Risk Calculation**:
+    - **High Risk**: Triggered by Negative client mood or critical MoM inaccuracies.
+    - **Medium Risk**: Triggered by out-of-scope discussions or minor discrepancies.
+    - **Low Risk**: High agenda coverage and accurate MoM.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+---
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 🎨 Design System
 
-### Code Splitting
+The UI uses a curated color palette:
+- **Primary Gradient**: `#6366f1` to `#a855f7` (Indigo to Purple)
+- **Success**: `#10b981` (Emerald)
+- **Warning**: `#f59e0b` (Amber)
+- **Danger**: `#ef4444` (Rose)
+- **Background**: Modern deep navy/black theme with translucent cards.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+---
 
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Developed with ❤️ for streamlined meeting management.
