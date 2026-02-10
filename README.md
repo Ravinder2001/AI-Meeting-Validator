@@ -1,76 +1,58 @@
 # 🤖 Meeting Audit & Validation System (Back-end Architecture)
 
-A robust LLM-orchestration system designed for automated semantic auditing of meeting data. This system validates formal documentation against raw verbal data to ensure integrity, compliance, and sentiment alignment.
+A robust LLM-orchestration system designed for automated semantic auditing of meeting data. This system validates formal documentation against raw verbal data to ensure integrity, compliance, and sentiment alignment using a deterministic logic layer on top of probabilistic AI outputs.
 
 ---
 
 ## 🛠️ Core Functional Modules
 
 ### 1. Semantic Integrity Validation (MoM vs. Transcript)
-The system performs a high-granularity cross-reference between the **Minutes of Meeting (MoM)** and the **Raw Transcript**. 
-- **Inference Goal**: Identify factual discrepancies and logical omissions.
-- **Methodology**: LLM-based verification where the transcript is treated as the immutable source of truth.
+The system performs a high-granularity cross-reference between the **Minutes of Meeting (MoM)** and the **Raw Transcript**.
+- **Source of Truth**: The raw transcript is treated as the immutable reference.
+- **Inference Logic**: The AI identifies factual discrepancies (incorrect points), logical omissions (missing points), and validates existing accurate entries.
+- **Verification Class**: Multi-point cross-verification.
 
 ### 2. Agenda Compliance Tracking
 Automated analysis of conversation flow against predefined agenda items.
-- **Logical Flow**: Extracts discussion points and maps them to an input array of agenda objects.
-- **Output**: Coverage metrics and evidence-based confirmation for each discussed item.
+- **Granular Mapping**: For every agenda item, the system searches for specific discussion evidence in the transcript.
+- **Coverage Metrics**: Provides a `discussed/total` ratio and a calculated coverage percentage.
 
-### 3. Client Sentiment & Behavioral Analysis
-Targeted extraction of specific speaker entities (Client/Stakeholder) to evaluate tonal variations.
-- **Signals**: Identification of explicit verbal signals that indicate project risk or satisfaction.
-- **Classification**: Sentiment categorization (Positive/Neutral/Negative) mapped to raw statement evidence.
+### 3. Entity-Specific Sentiment Analysis (Client-Centric)
+Targeted extraction of specific stakeholder entities to evaluate tonal variations.
+- **Target Filtering**: Specifically scoped to analyze client statements (e.g., John, Tommy) to filter out internal bias.
+- **Behavioral Signals**: Identification of explicit verbal cues indicating project risk, satisfaction, or friction.
 
 ### 4. Scope Creep Detection
-Identifies discussion topics that deviate from the authorized meeting scope (Agenda).
-- **Mechanism**: Differencing the discovered semantic topics in the transcript against the agenda's domain boundaries.
+Identifies discussion topics that deviate from the authorized domain boundaries.
+- **Domain Delta**: Calculates the semantic difference between the input Agenda items and the actual discusion topics found in the Transcript.
 
 ---
 
-## 🏗️ Technical Implementation (n8n Workflow)
+## 🏗️ Technical Architecture (n8n JSON Workflow)
 
-The system is implemented as an asynchronous orchestration pipeline within **n8n**, utilizing **Google Gemini 2.5 Flash** for high-throughput semantic processing.
+The system is implemented as an asynchronous orchestration pipeline within **n8n**, utilizing **Google Gemini 2.5 Flash** via LangChain for high-throughput semantic processing.
 
-### Workflow Architecture:
-- **Ingestion Tier**: REST API Webhook accepting structured JSON payloads containing `agenda`, `transcript`, and `mom` (Minutes of Meeting) as string buffers.
-- **Parallel Processing Layer**: 
-    - **Extraction Chains**: Specialized LLM chains running concurrent validation tasks to minimize latency.
-    - **Prompt Engineering**: System instructions focused on zero-shot extraction with strict JSON enforcement.
-- **Logic & Parsing Tier**: 
-    - Post-processing nodes to normalize LLM outputs (removal of markdown artifacts, JSON sanitization).
-    - Heuristic-based logic to aggregate results from parallel chains.
-- **Risk Assessment Engine**: 
-    - A centralized logic node that calculates an **Overall Risk Level** based on:
-        - Presence of factual discrepancies in MoM.
-        - Negative sentiment triggers from client-side statements.
-        - Volume of out-of-scope discussion topics.
-- **Egress Tier**: Synchronous webhook response delivering a unified analysis report.
-
----
-
-## 🔧 Workflow Configuration
-
-### System Requirements
-- **Orchestrator**: n8n (Self-hosted or Cloud)
-- **Model**: Google Gemini 2.5 Flash (via LangChain integration)
-- **Protocol**: HTTP/HTTPS POST
-
-### Integration Logic
-The pipeline expects a `POST` request to the following endpoint structure:
-```json
-{
-  "agenda": "string",
-  "transcript": "string",
-  "mom": "string"
-}
-```
-
-### Data Normalization
-AI outputs are passed through custom JavaScript nodes to ensure all string-based LLM responses are parsed into machine-readable objects, enabling downstream programmatic consumption of the audit data.
+### Workflow Pipeline Details:
+1. **Ingestion Tier**: REST API Webhook (`/analyze-meeting`) accepting JSON payloads: `{ agenda, transcript, mom }`.
+2. **Parallel Validation Tier**: 
+    - Concurrent execution of four specialized **LangChain ChainLLM** nodes.
+    - **Zero-Shot Prompting**: Each chain is constrained by strict System Prompts to ensure output is restricted to the specific audit task.
+3. **Data Sanitization Layer**: 
+    - Custom JavaScript **Code Nodes** (e.g., `Parse Agenda Validation`) utilize regex-based sanitization to strip LLM markdown artifacts (e.g., ` ```json `) to ensure raw JSON compatibility.
+4. **Deterministic Aggregation Engine**:
+    - **Node**: `Final Validation Report` (JS Logic Node).
+    - **Logic Operations**:
+        - `agenda_coverage`: Dynamic calculation based on Boolean discussion flags.
+        - `mom_accuracy_status`: Enum-based status mapping (`Accurate` vs `Partially Accurate`).
+        - `overall_risk_level`: Heuristic-based calculation:
+            - **High**: Triggered if `client_mood.overall === "Negative"`.
+            - **Medium**: Triggered if factual discrepancies exist or out-of-scope topics are identified.
+            - **Low**: Optimal state with high coverage and positive sentiment.
+5. **Egress Tier**: Synchronous webhook response delivering the unified `Final Validation Report` object.
 
 ---
 
-## 📊 Technical Use Cases
-- **automated Compliance Auditing**: Ensuring regulated meetings follow strict agendas.
-- **Project Risk Mitigation**: Early detection of client dissatisfaction via automated transcript sentiment analysis.
-- **Documentation Quality Assurance**: Verifying that human-written meeting minutes accurately reflect verbal agreements.
+## 🔧 Technical Use Cases
+- **Regulatory Compliance**: Ensuring mandatory meeting structures are followed.
+- **Account Management**: Early warning system for client churn based on sentiment signals.
+- **Audit Trails**: Programmatic verification of meeting minutes for QA and project management records.
