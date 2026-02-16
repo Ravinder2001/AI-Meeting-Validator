@@ -37,7 +37,9 @@ const Dashboard = ({ token, logout, user }) => {
               padding: '8px 16px',
               borderRadius: '8px',
               display: 'flex', alignItems: 'center', gap: '8px',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              fontWeight: 500
             }}
           >
             <LogOut size={16} /> Sign Out

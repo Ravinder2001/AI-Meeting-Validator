@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/v2/bots",
+      "destination": "https://api.meetingbaas.com/v2/bots"
+    },
+    {
+      "source": "/webhook-test/:path*",
+      "destination": "https://n8n-q8ji.onrender.com/webhook-test/:path*"
+    }
+  ]
+}
