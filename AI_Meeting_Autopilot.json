@@ -9,11 +9,8 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        9856,
-        3232
-      ],
-      "id": "6786691d-3d7f-4d1e-85d6-e68052a1ddfa",
+      "position": [0, 0],
+      "id": "webhook-trigger",
       "name": "Webhook (Meeting Finished)",
       "webhookId": "af13f6b0-6101-4270-942c-7d37b06bcd87"
     },
@@ -33,11 +30,8 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        10080,
-        3232
-      ],
-      "id": "293eafc8-e7f9-4916-a9c8-cf0677dacff2",
+      "position": [220, 0],
+      "id": "get-agenda",
       "name": "Get Meeting Details (Agenda)"
     },
     {
@@ -47,24 +41,29 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        10288,
-        3232
-      ],
-      "id": "7251c264-d04e-4619-9dc9-6682e4ff5eb7",
+      "position": [440, 0],
+      "id": "fetch-transcript",
       "name": "Fetch Transcript"
     },
     {
       "parameters": {
+        "jsCode": "const root = $items(\"Get Meeting Details (Agenda)\")[0].json.data.extra;\nconst utterances = $json.result.utterances || [];\nconst transcript = utterances.map(u => `${u.speaker}: ${u.text}`).join(\"\\n\");\n\nreturn {\n  agenda: root.agenda || \"No agenda provided\",\n  transcript: transcript,\n  title: root.title || \"Untitled Meeting\",\n  organizer_email: root.organizer_email,\n  created_at: $items(\"Get Meeting Details (Agenda)\")[0].json.created_at\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0],
+      "id": "prepare-data",
+      "name": "Prepare Data"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
-      "position": [
-        10464,
-        3424
-      ],
-      "id": "b341e2ef-ac17-4177-a411-4822009bd2af",
+      "position": [880, 250],
+      "id": "gemini-model",
       "name": "Google Gemini Chat Model",
       "credentials": {
         "googlePalmApi": {
@@ -76,33 +75,74 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=You are a senior Meeting Auditor AI.\n\n### INPUTS\n1. AGENDA: {{ $node[\"Get Meeting Details (Agenda)\"].json.data.extra.agenda || \"No agenda provided\" }}\n2. TRANSCRIPT: {{ $json.result.utterances ? $json.result.utterances.map(u => u.speaker + \": \" + u.text).join(\"\\n\") : \"No dialogue found\" }}\n\n### YOUR OBJECTIVE\nAnalyze the meeting and generate a structured Compliance & Performance Report.\n\n### OUTPUT FORMAT (Markdown)\n\n## 📊 Executive Summary\n- **Meeting Title**: {{ $node[\"Get Meeting Details (Agenda)\"].json.data.extra.title || \"Untitled Meeting\" }}\n- **Date**: {{ $node[\"Get Meeting Details (Agenda)\"].json.created_at || new Date().toISOString() }}\n- **Overall Score**: [0-100]%\n- **Risk Level**: [Low/Medium/High]\n\n## 🎯 Metrics & KPIs\n- **Agenda Coverage**: [0-100]%\n- **MoM Accuracy**: [0-100]% (How well the discussion matched the intended outcome)\n- **Client Mood**: [Positive/Neutral/Negative]\n\n## 📝 Detailed MoM (Short & Concise)\n- **Key Discussion Points**: [Bulleted list]\n- **Decisions Made**: [Bulleted list]\n- **Action Items**: [Who] will [What] by [When]\n\n## 🎭 Mood Signals & Sentiment\n- **Client Signals**: [Specific quotes or behaviors indicating mood]\n- **Internal Performance**: [How well did our side perform?]\n\n## 🚫 Out of Scope Topics\n- [List any topics discussed that were not on the agenda]\n\n## 🧠 Recommendation\n[One key recommendation for the next meeting]"
+        "text": "=You are an AI meeting auditor.\n\nMEETING TRANSCRIPT:\n{{ $('Prepare Data').item.json.transcript }}\n\nTask:\nGenerate detailed Minutes of Meeting (MoM).\n\nExpected output (JSON):\n{\n  \"summary\": \"Executive summary...\",\n  \"key_discussion_points\": [\"Point 1\", \"Point 2\"],\n  \"decisions\": [\"Decision 1\"],\n  \"action_items\": [{\"owner\": \"Name\", \"task\": \"Task\", \"due\": \"Date\"}]\n}",
+        "batching": {}
       },
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.4,
-      "position": [
-        10464,
-        3232
-      ],
-      "id": "911c5112-1489-4608-bcf0-05574fc15d76",
-      "name": "Gemini Analysis Chain"
+      "position": [900, 0],
+      "id": "generate-mom",
+      "name": "Generate MoM"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI meeting auditor.\n\nMEETING AGENDA:\n{{ $('Prepare Data').item.json.agenda }}\n\nMEETING TRANSCRIPT:\n{{ $('Prepare Data').item.json.transcript }}\n\nTask:\nFor each agenda item:\n1. Check if it was discussed.\n2. Provide evidence.\n3. Mark missed items.\n\nExpected format (JSON):\n{\n  \"agenda_validation\": [\n    {\n      \"agenda_item\": \"Item\",\n      \"discussed\": true,\n      \"evidence\": \"Quote\"\n    }\n  ]\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [1120, 0],
+      "id": "validate-agenda",
+      "name": "Agenda Validation"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI meeting auditor.\n\nMEETING TRANSCRIPT:\n{{ $('Prepare Data').item.json.transcript }}\n\nTask:\n1. Determine overall client mood (Positive, Neutral, Negative)\n2. Provide signals.\n\nExpected format (JSON):\n{\n  \"client_mood\": {\n    \"overall\": \"Positive\",\n    \"signals\": [\"Happy about X\"]\n  }\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [1340, 0],
+      "id": "client-mood",
+      "name": "Client Mood"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI meeting auditor.\n\nMEETING AGENDA:\n{{ $('Prepare Data').item.json.agenda }}\n\nMEETING TRANSCRIPT:\n{{ $('Prepare Data').item.json.transcript }}\n\nTask:\nIdentify discussed topics NOT on the agenda.\n\nExpected format (JSON):\n{\n  \"out_of_scope_topics\": [\"Topic 1\", \"Topic 2\"]\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [1560, 0],
+      "id": "out-of-scope",
+      "name": "Out of Scope"
+    },
+    {
+      "parameters": {
+        "jsCode": "function cleanJson(text) {\n  if (!text) return {};\n  const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();\n  try {\n    return JSON.parse(cleaned);\n  } catch (e) {\n    return {};\n  }\n}\n\nconst mom = cleanJson($items(\"Generate MoM\")[0].json.text);\nconst agenda = cleanJson($items(\"Agenda Validation\")[0].json.text);\nconst mood = cleanJson($items(\"Client Mood\")[0].json.text);\nconst scope = cleanJson($items(\"Out of Scope\")[0].json.text);\nconst meta = $items(\"Prepare Data\")[0].json;\n\n// Calculate Risk\nlet risk = \"Low\";\nlet score = 95;\nif (mood.client_mood && mood.client_mood.overall === \"Negative\") { risk = \"High\"; score -= 30; }\nif (scope.out_of_scope_topics && scope.out_of_scope_topics.length > 2) { risk = \"Medium\"; score -= 10; }\n\nlet missedItems = 0;\nif (agenda.agenda_validation) {\n  missedItems = agenda.agenda_validation.filter(i => !i.discussed).length;\n}\nif (missedItems > 0) { score -= (missedItems * 10); }\n\n// Build HTML Report\nconst html = `\n<!DOCTYPE html>\n<html>\n<body style=\"font-family: -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;\">\n  \n  <div style=\"background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;\">\n    <h2 style=\"color: #2c3e50; margin: 0;\">Meeting Analysis Report</h2>\n    <p style=\"color: #666; margin: 5px 0 0 0;\">${meta.title}</p>\n    <div style=\"margin-top: 15px; display: flex; gap: 15px;\">\n      <span style=\"background: #e3f2fd; color: #1565c0; padding: 4px 8px; border-radius: 4px; font-size: 12px;\">Score: ${Math.max(0, score)}%</span>\n      <span style=\"background: ${risk === 'High' ? '#ffebee' : risk === 'Medium' ? '#fff3e0' : '#e8f5e9'}; color: ${risk === 'High' ? '#c62828' : risk === 'Medium' ? '#ef6c00' : '#2e7d32'}; padding: 4px 8px; border-radius: 4px; font-size: 12px;\">Risk: ${risk}</span>\n    </div>\n  </div>\n\n  <div style=\"background-color: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;\">\n    <h3 style=\"color: #2c3e50; margin-top: 0;\">📝 Executive Summary</h3>\n    <p>${mom.summary || \"No summary available.\"}</p>\n    \n    <h4 style=\"margin-bottom: 10px;\">Key Discussion Points</h4>\n    <ul style=\"padding-left: 20px; margin-top: 5px;\">\n      ${(mom.key_discussion_points || []).map(p => `<li>${p}</li>`).join('')}\n    </ul>\n\n    <h4 style=\"margin-bottom: 10px;\">Action Items</h4>\n    <ul style=\"padding-left: 20px; margin-top: 5px;\">\n      ${(mom.action_items || []).map(a => `<li><strong>${a.owner || 'Unknown'}</strong>: ${a.task}</li>`).join('')}\n    </ul>\n  </div>\n\n  <div style=\"background-color: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px; margin-bottom: 20px;\">\n    <h3 style=\"color: #2c3e50; margin-top: 0;\">🎯 Compliance & Mood</h3>\n    \n    <div style=\"margin-bottom: 15px;\">\n      <strong>Agenda Coverage:</strong>\n      <div style=\"margin-top: 5px;\">\n        ${(agenda.agenda_validation || []).map(i => \n          `<div style=\"display: flex; align-items: center; gap: 8px; margin-bottom: 5px;\">\n            <span style=\"color: ${i.discussed ? '#2e7d32' : '#c62828'}\">${i.discussed ? '✓' : '✗'}</span>\n            <span style=\"color: #555;\">${i.agenda_item}</span>\n           </div>`\n        ).join('')}\n      </div>\n    </div>\n\n    <div style=\"margin-bottom: 15px;\">\n      <strong>Client Mood: ${(mood.client_mood || {}).overall || 'Neutral'}</strong>\n      <ul style=\"padding-left: 20px; margin-top: 5px; color: #666;\">\n        ${((mood.client_mood || {}).signals || []).map(s => `<li>${s}</li>`).join('')}\n      </ul>\n    </div>\n\n    ${(scope.out_of_scope_topics || []).length > 0 ? `\n    <div>\n      <strong style=\"color: #ef6c00;\">🚫 Out of Scope Topics:</strong>\n      <ul style=\"padding-left: 20px; margin-top: 5px; color: #666;\">\n        ${scope.out_of_scope_topics.map(t => `<li>${t}</li>`).join('')}\n      </ul>\n    </div>` : ''}\n  </div>\n\n  <div style=\"text-align: center; color: #999; font-size: 12px;\">\n    Generated by Meeting Auditor AI • ${new Date().toISOString().split('T')[0]}\n  </div>\n</body>\n</html>`;\n\nreturn { htmlMessage: html, organizer_email: meta.organizer_email, subject: `Meeting Analysis: ${meta.title}` };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 0],
+      "id": "format-report",
+      "name": "Format Report"
     },
     {
       "parameters": {
         "resource": "message",
         "operation": "send",
-        "subject": "={{ \"Meeting Analysis: \" + $node[\"Get Meeting Details (Agenda)\"].json.data.extra.title }}",
+        "subject": "={{ $json.subject }}",
         "emailType": "html",
-        "message": "={{ \"<!DOCTYPE html><html><body style='font-family: -apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;'><div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;'><h2 style='color: #2c3e50; margin-top: 0;'>Meeting Analysis Report</h2><p style='margin-bottom: 0; color: #666;'>\" + $node[\"Get Meeting Details (Agenda)\"].json.data.extra.title + \"</p></div><div style='background-color: #ffffff; border: 1px solid #e1e4e8; border-radius: 8px; padding: 25px;'>\" + $node[\"Gemini Analysis Chain\"].json.text.replace(/## (.*?)\\n/g, '<h3 style=\"color: #0366d6; margin-top: 20px; margin-bottom: 10px; font-size: 18px;\">$1</h3>').replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>').replace(/- (.*?)\\n/g, '<div style=\"margin-bottom: 8px; padding-left: 10px; border-left: 3px solid #eee;\">$1</div>').replace(/\\n/g, '<br>') + \"</div><div style='text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #888; font-size: 12px;'><p>Generated by AI Meeting Auditor • \" + $node[\"Get Meeting Details (Agenda)\"].json.created_at + \"</p></div></body></html>\" }}",
-        "sendTo": "={{ $node[\"Get Meeting Details (Agenda)\"].json.data.extra.organizer_email }}"
+        "message": "={{ $json.htmlMessage }}",
+        "sendTo": "={{ $json.organizer_email }}"
       },
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [
-        10784,
-        3232
-      ],
-      "id": "8557b065-c223-429f-9192-d445b2bdcb0f",
+      "position": [2000, 0],
+      "id": "send-email",
       "name": "Send Email",
       "credentials": {
         "gmailOAuth2": {
@@ -112,75 +152,25 @@
       }
     }
   ],
-  "pinData": {},
   "connections": {
-    "Webhook (Meeting Finished)": {
-      "main": [
-        [
-          {
-            "node": "Get Meeting Details (Agenda)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Meeting Details (Agenda)": {
-      "main": [
-        [
-          {
-            "node": "Fetch Transcript",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch Transcript": {
-      "main": [
-        [
-          {
-            "node": "Gemini Analysis Chain",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
+    "Webhook (Meeting Finished)": { "main": [[{ "node": "Get Meeting Details (Agenda)", "type": "main", "index": 0 }]] },
+    "Get Meeting Details (Agenda)": { "main": [[{ "node": "Fetch Transcript", "type": "main", "index": 0 }]] },
+    "Fetch Transcript": { "main": [[{ "node": "Prepare Data", "type": "main", "index": 0 }]] },
+    "Prepare Data": { "main": [[{ "node": "Generate MoM", "type": "main", "index": 0 }]] },
+    "Generate MoM": { "main": [[{ "node": "Agenda Validation", "type": "main", "index": 0 }]] },
+    "Agenda Validation": { "main": [[{ "node": "Client Mood", "type": "main", "index": 0 }]] },
+    "Client Mood": { "main": [[{ "node": "Out of Scope", "type": "main", "index": 0 }]] },
+    "Out of Scope": { "main": [[{ "node": "Format Report", "type": "main", "index": 0 }]] },
+    "Format Report": { "main": [[{ "node": "Send Email", "type": "main", "index": 0 }]] },
     "Google Gemini Chat Model": {
       "ai_languageModel": [
         [
-          {
-            "node": "Gemini Analysis Chain",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Gemini Analysis Chain": {
-      "main": [
-        [
-          {
-            "node": "Send Email",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Generate MoM", "type": "ai_languageModel", "index": 0 },
+          { "node": "Agenda Validation", "type": "ai_languageModel", "index": 0 },
+          { "node": "Client Mood", "type": "ai_languageModel", "index": 0 },
+          { "node": "Out of Scope", "type": "ai_languageModel", "index": 0 }
         ]
       ]
     }
-  },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": false
-  },
-  "versionId": "961bdb8d-16cf-41a4-b8f2-0f8e9e7433ba",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "b2503d637c870188b22a9cf86ac0662f6fe5b693cfaf335c7614fe3b19f1ece3"
-  },
-  "id": "0jP1YhBDtCQYPTX6",
-  "tags": []
+  }
 }

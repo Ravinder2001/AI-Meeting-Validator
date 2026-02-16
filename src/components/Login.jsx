@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
-import { LogIn } from 'lucide-react';
+// LogIn import removed
 
 const Login = ({ onSuccess, onError }) => {
   const login = useGoogleLogin({

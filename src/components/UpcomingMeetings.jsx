@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { Calendar, Clock, Video, Bot, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, Video, Bot } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // Meeting BaaS API URL for direct bot joining (Proxied via package.json)

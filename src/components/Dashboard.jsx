@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { LogOut } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import UpcomingMeetings from './UpcomingMeetings';
 
 const Dashboard = ({ token, logout, user }) => {
@@ -14,9 +14,17 @@ const Dashboard = ({ token, logout, user }) => {
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           {user && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-               <img src={user.picture} alt={user.name} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
-               <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>{user.name}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '20px' }}>
+               {user.picture ? (
+                 <img 
+                   src={user.picture} 
+                   alt={user.name} 
+                   style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.2)' }} 
+                   onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }}
+                 />
+               ) : <User size={24} color="white" />}
+               <User size={24} color="white" style={{ display: 'none' }} />
+               <span style={{ fontSize: '0.9rem', color: 'white', fontWeight: 500 }}>{user.name}</span>
             </div>
           )}
           <button 
