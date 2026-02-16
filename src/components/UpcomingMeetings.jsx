@@ -4,6 +4,7 @@ import { Calendar, Clock, Video, Bot } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fetchUpcomingMeetings } from '../services/calendarService';
 import { joinMeeting } from '../services/botService';
+import { toast } from 'sonner';
 
 const UpcomingMeetings = ({ token, user }) => {
   const [meetings, setMeetings] = useState([]);
@@ -25,16 +26,17 @@ const UpcomingMeetings = ({ token, user }) => {
     loadMeetings();
   }, [token]);
 
+
+
   const handleJoinMeeting = async (meeting) => {
     setProcessingId(meeting.id);
-    try {
-      await joinMeeting(meeting, user);
-      alert(`Bot scheduled for: ${meeting.summary}`);
-    } catch (error) {
-      alert("Failed to send bot: " + error.message);
-    } finally {
-      setProcessingId(null);
-    }
+    
+    toast.promise(joinMeeting(meeting, user), {
+      loading: 'Summoning AI Meeting Auditor... 🤖',
+      success: (data) => `Auditor has joined: ${meeting.summary} 🚀`,
+      error: (err) => `Failed to join: ${err.message}`, // err.message from BotService
+      finally: () => setProcessingId(null)
+    });
   };
 
   if (loading) return (

@@ -1,5 +1,6 @@
 import React from "react";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { Toaster } from 'sonner';
 import useGoogleAuth from "./hooks/useGoogleAuth";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
@@ -24,6 +25,7 @@ const AppContent = () => {
 function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <Toaster position="top-right" richColors theme="dark" />
       <AppContent />
     </GoogleOAuthProvider>
   );
