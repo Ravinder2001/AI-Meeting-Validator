@@ -1,58 +1,103 @@
-# 🤖 Meeting Audit & Validation System (Back-end Architecture)
+# 🤖 AI Meeting Auditor & Autopilot
 
-A robust LLM-orchestration system designed for automated semantic auditing of meeting data. This system validates formal documentation against raw verbal data to ensure integrity, compliance, and sentiment alignment using a deterministic logic layer on top of probabilistic AI outputs.
-
----
-
-## 🛠️ Core Functional Modules
-
-### 1. Semantic Integrity Validation (MoM vs. Transcript)
-The system performs a high-granularity cross-reference between the **Minutes of Meeting (MoM)** and the **Raw Transcript**.
-- **Source of Truth**: The raw transcript is treated as the immutable reference.
-- **Inference Logic**: The AI identifies factual discrepancies (incorrect points), logical omissions (missing points), and validates existing accurate entries.
-- **Verification Class**: Multi-point cross-verification.
-
-### 2. Agenda Compliance Tracking
-Automated analysis of conversation flow against predefined agenda items.
-- **Granular Mapping**: For every agenda item, the system searches for specific discussion evidence in the transcript.
-- **Coverage Metrics**: Provides a `discussed/total` ratio and a calculated coverage percentage.
-
-### 3. Entity-Specific Sentiment Analysis (Client-Centric)
-Targeted extraction of specific stakeholder entities to evaluate tonal variations.
-- **Target Filtering**: Specifically scoped to analyze client statements (e.g., John, Tommy) to filter out internal bias.
-- **Behavioral Signals**: Identification of explicit verbal cues indicating project risk, satisfaction, or friction.
-
-### 4. Scope Creep Detection
-Identifies discussion topics that deviate from the authorized domain boundaries.
-- **Domain Delta**: Calculates the semantic difference between the input Agenda items and the actual discusion topics found in the Transcript.
+A complete **End-to-End Meeting Intelligence System** that automates the lifecycle of meeting auditing. From joining calls automatically to generating deep semantic analysis reports, this system leverages **React**, **Meeting BaaS**, and **n8n** with **Google Gemini** models.
 
 ---
 
-## 🏗️ Technical Architecture (n8n JSON Workflow)
+## 🚀 Key Features
 
-The system is implemented as an asynchronous orchestration pipeline within **n8n**, utilizing **Google Gemini 2.5 Flash** via LangChain for high-throughput semantic processing.
+### 1. 📅 Automated Meeting Pilot
+- **Direct Google Calendar Integration**: Fetches upcoming meetings securely.
+- **One-Click Join**: Instantly deploying an AI bot to Google Meet, Zoom, or Teams calls via **Meeting BaaS** API.
+- **Smart Proxying**: Uses a robust proxy layer (Local & Vercel) to bypass CORS and securely route API requests.
 
-### Workflow Pipeline Details:
-1. **Ingestion Tier**: REST API Webhook (`/analyze-meeting`) accepting JSON payloads: `{ agenda, transcript, mom }`.
-2. **Parallel Validation Tier**: 
-    - Concurrent execution of four specialized **LangChain ChainLLM** nodes.
-    - **Zero-Shot Prompting**: Each chain is constrained by strict System Prompts to ensure output is restricted to the specific audit task.
-3. **Data Sanitization Layer**: 
-    - Custom JavaScript **Code Nodes** (e.g., `Parse Agenda Validation`) utilize regex-based sanitization to strip LLM markdown artifacts (e.g., ` ```json `) to ensure raw JSON compatibility.
-4. **Deterministic Aggregation Engine**:
-    - **Node**: `Final Validation Report` (JS Logic Node).
-    - **Logic Operations**:
-        - `agenda_coverage`: Dynamic calculation based on Boolean discussion flags.
-        - `mom_accuracy_status`: Enum-based status mapping (`Accurate` vs `Partially Accurate`).
-        - `overall_risk_level`: Heuristic-based calculation:
-            - **High**: Triggered if `client_mood.overall === "Negative"`.
-            - **Medium**: Triggered if factual discrepancies exist or out-of-scope topics are identified.
-            - **Low**: Optimal state with high coverage and positive sentiment.
-5. **Egress Tier**: Synchronous webhook response delivering the unified `Final Validation Report` object.
+### 2. 🧠 Granular AI Analysis (The "Autopilot" Engine)
+Instead of a generic summary, the system performs a **4-Step Deep Dive** on every meeting transcript:
+1.  **Detailed MoM Generation**: Extracts key discussion points, decisions, and action items.
+2.  **Agenda Compliance**: Verifies if planned agenda items were actually discussed using evidence-based checking.
+3.  **Client Sentiment Analysis**: Detects underlying mood and signals from client statements (Positive/Neutral/Negative).
+4.  **Scope Creep Detection**: Identifies topics discussed that were *not* on the agenda.
+
+### 3. 📩 Beautiful HTML Reports
+- Delivers a structured, colour-coded **HTML Email Report** to the organizer immediately after the meeting.
+- Includes **Risk Scores**, **Compliance Badges**, and **Actionable Insights**.
 
 ---
 
-## 🔧 Technical Use Cases
-- **Regulatory Compliance**: Ensuring mandatory meeting structures are followed.
-- **Account Management**: Early warning system for client churn based on sentiment signals.
-- **Audit Trails**: Programmatic verification of meeting minutes for QA and project management records.
+## 🏗️ Technical Architecture
+
+### **Frontend (React)**
+- **Framework**: React 19 (CRA)
+- **Styling**: Custom CSS variables, Glassmorphism UI, Framer Motion for animations.
+- **Authentication**: Google OAuth 2.0.
+- **API Handling**: Direct Axios calls with a **Local vs. Cloud Proxy Strategy**:
+    - **Development**: Uses the standardized `proxy` field in `package.json` to route `/v2/bots` requests to Meeting BaaS, bypassing local CORS issues.
+    - **Production**: Vercel Rewrites (`vercel.json`) handles the same routing, ensuring secure API communication on the live site.
+
+### **Automation (n8n Workflow)**
+- **File**: `AI_Meeting_Autopilot.json`
+- **Trigger**: Webhook from Meeting BaaS (when meeting ends).
+- **Process**:
+    1.  **Fetch Transcript**: Retrieves audio/text from the bot.
+    2.  **Parallel Chains**: Runs 4 separate LangChain/Gemini nodes for specific analysis tasks.
+    3.  **Data Sanitization**: Custom code nodes to strip Markdown artifacts (`cleanJson` logic).
+    4.  **HTML Generation**: Assembles the final report dynamically.
+    5.  **Email Delivery**: Sends the report via Gmail.
+
+---
+
+## 🛠️ Setup & Installation
+
+### 1. Prerequisites
+- **Node.js** (v16+)
+- **n8n Instance** (Self-hosted or Cloud)
+- **Meeting BaaS API Key**
+- **Google Cloud Console Project** (for OAuth)
+
+### 2. Environment Variables
+Create a `.env` file in the root directory:
+```env
+REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id
+REACT_APP_GOOGLE_CLIENT_SECRET=your_google_client_secret
+REACT_APP_MEETING_BAAS_API_KEY=your_meeting_baas_api_key
+```
+
+### 3. Installation
+```bash
+# Install dependencies
+npm install
+
+# Start the development server (with Proxy enabled)
+npm start
+```
+The app will run at `http://localhost:3000`.
+
+### 4. n8n Workflow Setup
+1.  Open your n8n instance.
+2.  Import the **`AI_Meeting_Autopilot.json`** file included in this repo.
+3.  Configure the **Gmail Credential** node with your own credentials.
+4.  Ensure the **Google Gemini Chat Model** credentials are set.
+5.  Activate the workflow.
+
+---
+
+## 🌍 Deployment (Vercel)
+
+This project is optimized for **Vercel**.
+The `vercel.json` file handles the API proxying for production:
+
+```json
+{
+  "rewrites": [
+    { "source": "/v2/bots", "destination": "https://api.meetingbaas.com/v2/bots" },
+    { "source": "/webhook-test/:path*", "destination": "https://n8n-q8ji.onrender.com/webhook-test/:path*" }
+  ]
+}
+```
+
+Simply push to your repository and connect it to Vercel. The rewrites will activate automatically.
+
+---
+
+## 📝 License
+MIT License. Built by Ravinder Negi.

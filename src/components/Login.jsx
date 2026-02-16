@@ -1,16 +1,7 @@
 import React from 'react';
-import { useGoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
-// LogIn import removed
 
-const Login = ({ onSuccess, onError }) => {
-  const login = useGoogleLogin({
-    onSuccess: (codeResponse) => onSuccess(codeResponse),
-    onError: onError,
-    scope: 'https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/userinfo.profile',
-    flow: 'implicit' // Get access_token directly
-  });
-
+const Login = ({ login }) => {
   return (
     <div className="login-container" style={{
       display: 'flex', 
