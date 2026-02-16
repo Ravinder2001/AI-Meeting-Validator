@@ -5,11 +5,13 @@ import { motion } from 'framer-motion';
 import { fetchUpcomingMeetings } from '../services/calendarService';
 import { joinMeeting } from '../services/botService';
 import { toast } from 'sonner';
+import AgendaModal from './AgendaModal';
 
 const UpcomingMeetings = ({ token, user }) => {
   const [meetings, setMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
+  const [selectedMeeting, setSelectedMeeting] = useState(null);
 
   useEffect(() => {
     const loadMeetings = async () => {
@@ -26,15 +28,23 @@ const UpcomingMeetings = ({ token, user }) => {
     loadMeetings();
   }, [token]);
 
+  // Step 1: User clicks "Send AI Auditor"
+  const handleInitiateJoin = (meeting) => {
+    setSelectedMeeting(meeting);
+  };
 
-
-  const handleJoinMeeting = async (meeting) => {
-    setProcessingId(meeting.id);
+  // Step 2: User confirms from Modal
+  const handleConfirmJoin = async (customAgenda) => {
+    if (!selectedMeeting) return;
     
-    toast.promise(joinMeeting(meeting, user), {
+    const meeting = selectedMeeting;
+    setProcessingId(meeting.id);
+    setSelectedMeeting(null); // Close modal
+    
+    toast.promise(joinMeeting(meeting, user, customAgenda), {
       loading: 'Summoning AI Meeting Auditor... 🤖',
       success: (data) => `Auditor has joined: ${meeting.summary} 🚀`,
-      error: (err) => `Failed to join: ${err.message}`, // err.message from BotService
+      error: (err) => `Failed to join: ${err.message}`,
       finally: () => setProcessingId(null)
     });
   };
@@ -47,6 +57,14 @@ const UpcomingMeetings = ({ token, user }) => {
 
   return (
     <div className="upcoming-meetings-container">
+      {selectedMeeting && (
+        <AgendaModal 
+          meeting={selectedMeeting} 
+          onClose={() => setSelectedMeeting(null)} 
+          onConfirm={handleConfirmJoin} 
+        />
+      )}
+
       <div className="meetings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
         {meetings.length === 0 ? (
           <div style={{ textAlign: 'center', color: 'var(--text-secondary)', gridColumn: '1/-1' }}>
@@ -96,7 +114,7 @@ const UpcomingMeetings = ({ token, user }) => {
 
               <button 
                 className="action-btn"
-                onClick={() => handleJoinMeeting(meeting)}
+                onClick={() => handleInitiateJoin(meeting)}
                 disabled={processingId === meeting.id}
                 style={{
                   width: '100%',
@@ -110,7 +128,7 @@ const UpcomingMeetings = ({ token, user }) => {
                   fontWeight: 600, fontSize: '1rem', transition: 'all 0.2s'
                 }}
               >
-                {processingId === meeting.id ? "Sending..." : <><Bot size={20} /> Send AI Auditor</>}
+                {processingId === meeting.id ? "Sending..." : <><Bot size={20} /> Configure & Send</>}
               </button>
             </motion.div>
           ))

@@ -3,7 +3,7 @@ import axios from 'axios';
 // API URL (Proxied via package.json for local dev, via vercel.json for production)
 const MEETING_BAAS_API_URL = "/v2/bots";
 
-export const joinMeeting = async (meeting, user) => {
+export const joinMeeting = async (meeting, user, customAgenda) => {
   const apiKey = process.env.REACT_APP_MEETING_BAAS_API_KEY;
   if (!apiKey) throw new Error("Missing Meeting BaaS API Key in .env file!");
 
@@ -23,7 +23,7 @@ export const joinMeeting = async (meeting, user) => {
     extra: {
       organizer_email: user?.email || meeting.organizer?.email || "ravinder.s.negi@intglobal.com",
       title: meeting.summary,
-      agenda: meeting.description || "No description provided"
+      agenda: customAgenda || meeting.description || "No description provided"
     }
   };
 
