@@ -22,6 +22,10 @@ Instead of a generic summary, the system performs a **4-Step Deep Dive** on ever
 - Delivers a structured, colour-coded **HTML Email Report** to the organizer immediately after the meeting.
 - Includes **Risk Scores**, **Compliance Badges**, and **Actionable Insights**.
 
+### 4. 🎯 Mission Configuration & Agile Agendas
+- **Agile Meeting Context**: Not every meeting has a perfect calendar description. The **Mission Configuration Modal** allows users to inject a custom agenda or specific instructions right before the meeting starts.
+- **Dynamic Context Injection**: The AI auditor receives this custom context to tailor its analysis (e.g., "Focus on budget approval", or "Watch for client hesitation").
+
 ---
 
 ## 🏗️ Technical Architecture
