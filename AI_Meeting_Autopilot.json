@@ -1,0 +1,186 @@
+{
+  "name": "AI Meeting Autopilot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "autopilot",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        9856,
+        3232
+      ],
+      "id": "6786691d-3d7f-4d1e-85d6-e68052a1ddfa",
+      "name": "Webhook (Meeting Finished)",
+      "webhookId": "af13f6b0-6101-4270-942c-7d37b06bcd87"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.meetingbaas.com/v2/bots/' + $json.body.data.bot_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-meeting-baas-api-key",
+              "value": "mb-VYuVvhweaTCdhPRtNnYbSfeaWkQLGiAxibmEGgJAnJZjQTNLiGrntWRzqQMhk"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        10080,
+        3232
+      ],
+      "id": "293eafc8-e7f9-4916-a9c8-cf0677dacff2",
+      "name": "Get Meeting Details (Agenda)"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data.transcription }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        10288,
+        3232
+      ],
+      "id": "7251c264-d04e-4619-9dc9-6682e4ff5eb7",
+      "name": "Fetch Transcript"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        10464,
+        3424
+      ],
+      "id": "b341e2ef-ac17-4177-a411-4822009bd2af",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "jb6oNfslh7X0hVda",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a senior Meeting Auditor AI.\n\n### INPUTS\n1. AGENDA: {{ $node[\"Get Meeting Details (Agenda)\"].json.data.extra.agenda || \"No agenda provided\" }}\n2. TRANSCRIPT: {{ $json.result.utterances ? $json.result.utterances.map(u => u.speaker + \": \" + u.text).join(\"\\n\") : \"No dialogue found\" }}\n\n### YOUR OBJECTIVE\nAnalyze the meeting and generate a structured Compliance & Performance Report.\n\n### OUTPUT FORMAT (Markdown)\n\n## 📊 Executive Summary\n- **Meeting Title**: {{ $node[\"Get Meeting Details (Agenda)\"].json.data.extra.title || \"Untitled Meeting\" }}\n- **Date**: {{ $node[\"Get Meeting Details (Agenda)\"].json.created_at || new Date().toISOString() }}\n- **Overall Score**: [0-100]%\n- **Risk Level**: [Low/Medium/High]\n\n## 🎯 Metrics & KPIs\n- **Agenda Coverage**: [0-100]%\n- **MoM Accuracy**: [0-100]% (How well the discussion matched the intended outcome)\n- **Client Mood**: [Positive/Neutral/Negative]\n\n## 📝 Detailed MoM (Short & Concise)\n- **Key Discussion Points**: [Bulleted list]\n- **Decisions Made**: [Bulleted list]\n- **Action Items**: [Who] will [What] by [When]\n\n## 🎭 Mood Signals & Sentiment\n- **Client Signals**: [Specific quotes or behaviors indicating mood]\n- **Internal Performance**: [How well did our side perform?]\n\n## 🚫 Out of Scope Topics\n- [List any topics discussed that were not on the agenda]\n\n## 🧠 Recommendation\n[One key recommendation for the next meeting]"
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        10464,
+        3232
+      ],
+      "id": "911c5112-1489-4608-bcf0-05574fc15d76",
+      "name": "Gemini Analysis Chain"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "subject": "={{ \"Meeting Analysis: \" + $node[\"Get Meeting Details (Agenda)\"].json.data.extra.title }}",
+        "emailType": "html",
+        "message": "={{ \"<!DOCTYPE html><html><body style='font-family: -apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;'><div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;'><h2 style='color: #2c3e50; margin-top: 0;'>Meeting Analysis Report</h2><p style='margin-bottom: 0; color: #666;'>\" + $node[\"Get Meeting Details (Agenda)\"].json.data.extra.title + \"</p></div><div style='background-color: #ffffff; border: 1px solid #e1e4e8; border-radius: 8px; padding: 25px;'>\" + $node[\"Gemini Analysis Chain\"].json.text.replace(/## (.*?)\\n/g, '<h3 style=\"color: #0366d6; margin-top: 20px; margin-bottom: 10px; font-size: 18px;\">$1</h3>').replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>').replace(/- (.*?)\\n/g, '<div style=\"margin-bottom: 8px; padding-left: 10px; border-left: 3px solid #eee;\">$1</div>').replace(/\\n/g, '<br>') + \"</div><div style='text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #888; font-size: 12px;'><p>Generated by AI Meeting Auditor • \" + $node[\"Get Meeting Details (Agenda)\"].json.created_at + \"</p></div></body></html>\" }}",
+        "sendTo": "={{ $node[\"Get Meeting Details (Agenda)\"].json.data.extra.organizer_email }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        10784,
+        3232
+      ],
+      "id": "8557b065-c223-429f-9192-d445b2bdcb0f",
+      "name": "Send Email",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Google Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook (Meeting Finished)": {
+      "main": [
+        [
+          {
+            "node": "Get Meeting Details (Agenda)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Meeting Details (Agenda)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Transcript": {
+      "main": [
+        [
+          {
+            "node": "Gemini Analysis Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Gemini Analysis Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Analysis Chain": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "961bdb8d-16cf-41a4-b8f2-0f8e9e7433ba",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b2503d637c870188b22a9cf86ac0662f6fe5b693cfaf335c7614fe3b19f1ece3"
+  },
+  "id": "0jP1YhBDtCQYPTX6",
+  "tags": []
+}
