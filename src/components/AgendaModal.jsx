@@ -3,8 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, FileText, Calendar } from 'lucide-react';
 
 const AgendaModal = ({ meeting, onClose, onConfirm }) => {
+  const stripHtml = (html) => {
+    if (!html) return "";
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent || "";
+  };
+
   const [editedAgenda, setEditedAgenda] = useState(
-    meeting.description || "No description provided. Add your agenda here..."
+    stripHtml(meeting.description) || "No description provided. Add your agenda here..."
   );
 
   return (
