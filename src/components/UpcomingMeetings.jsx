@@ -1,32 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { Calendar, Clock, Video, Bot } from 'lucide-react';
+import { Calendar, Clock, Video, Bot, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fetchUpcomingMeetings } from '../services/calendarService';
 import { joinMeeting } from '../services/botService';
+import { fetchAuditStatus, logAuditStart } from '../services/auditService';
 import { toast } from 'sonner';
 import AgendaModal from './AgendaModal';
+import ReportModal from './ReportModal'; // We will create this next
 
 const UpcomingMeetings = ({ token, user }) => {
   const [meetings, setMeetings] = useState([]);
+  const [audits, setAudits] = useState([]); // Store DB audit statuses
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
+  const [viewingReport, setViewingReport] = useState(null);
+
+  const loadData = useCallback(async () => {
+    if (!token) return;
+    try {
+      setLoading(true);
+      const [meetingsData, auditsData] = await Promise.all([
+        fetchUpcomingMeetings(token),
+        fetchAuditStatus()
+      ]);
+      setMeetings(meetingsData);
+      setAudits(auditsData);
+    } catch (error) {
+      console.error("Failed to load meetings or audits", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
 
   useEffect(() => {
-    const loadMeetings = async () => {
-      if (!token) return;
-      try {
-        const data = await fetchUpcomingMeetings(token);
-        setMeetings(data);
-      } catch (error) {
-        console.error("Failed to load meetings", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadMeetings();
-  }, [token]);
+    loadData();
+    
+    // Optional: Refresh audits every 30 seconds to catch n8n updates
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
+  }, [loadData]);
 
   // Step 1: User clicks "Send AI Auditor"
   const handleInitiateJoin = (meeting) => {
@@ -39,17 +53,28 @@ const UpcomingMeetings = ({ token, user }) => {
     
     const meeting = selectedMeeting;
     setProcessingId(meeting.id);
-    setSelectedMeeting(null); // Close modal
+    setSelectedMeeting(null);
+    
+    // Log optimistic start to DB via n8n
+    await logAuditStart(meeting.id, meeting.summary);
     
     toast.promise(joinMeeting(meeting, user, customAgenda), {
       loading: 'Summoning AI Meeting Auditor... 🤖',
-      success: (data) => `Auditor has joined: ${meeting.summary} 🚀`,
+      success: (data) => {
+        // Refresh audits to show "Auditing" state immediately
+        loadData();
+        return `Auditor has joined: ${meeting.summary} 🚀`;
+      },
       error: (err) => `Failed to join: ${err.message}`,
       finally: () => setProcessingId(null)
     });
   };
 
-  if (loading) return (
+  const getAuditStatus = (meetingId) => {
+    return audits.find(a => a.meeting_id === meetingId);
+  };
+
+  if (loading && meetings.length === 0) return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
       <div className="loader"></div>
     </div>
@@ -62,6 +87,13 @@ const UpcomingMeetings = ({ token, user }) => {
           meeting={selectedMeeting} 
           onClose={() => setSelectedMeeting(null)} 
           onConfirm={handleConfirmJoin} 
+        />
+      )}
+
+      {viewingReport && (
+        <ReportModal 
+          report={viewingReport} 
+          onClose={() => setViewingReport(null)} 
         />
       )}
 
@@ -114,21 +146,39 @@ const UpcomingMeetings = ({ token, user }) => {
 
               <button 
                 className="action-btn"
-                onClick={() => handleInitiateJoin(meeting)}
-                disabled={processingId === meeting.id}
+                onClick={() => {
+                  const audit = getAuditStatus(meeting.id);
+                  if (audit?.status === 'completed') {
+                    setViewingReport(audit);
+                  } else {
+                    handleInitiateJoin(meeting);
+                  }
+                }}
+                disabled={processingId === meeting.id || getAuditStatus(meeting.id)?.status === 'auditing'}
                 style={{
                   width: '100%',
                   padding: '14px',
                   borderRadius: '12px',
                   border: 'none',
-                  background: processingId === meeting.id ? 'var(--text-secondary)' : 'var(--primary-gradient)',
+                  background: (processingId === meeting.id || getAuditStatus(meeting.id)?.status === 'auditing') 
+                    ? 'rgba(255,255,255,0.1)' 
+                    : getAuditStatus(meeting.id)?.status === 'completed'
+                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' // Green for completed
+                    : 'var(--primary-gradient)',
                   color: 'white',
-                  cursor: processingId === meeting.id ? 'not-allowed' : 'pointer',
+                  cursor: (processingId === meeting.id || getAuditStatus(meeting.id)?.status === 'auditing') ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  fontWeight: 600, fontSize: '1rem', transition: 'all 0.2s'
+                  fontWeight: 600, fontSize: '1rem', transition: 'all 0.2s',
+                  boxShadow: getAuditStatus(meeting.id)?.status === 'completed' ? '0 4px 12px rgba(16, 185, 129, 0.2)' : 'none'
                 }}
               >
-                {processingId === meeting.id ? "Sending..." : <><Bot size={20} /> Configure & Send</>}
+                {processingId === meeting.id || getAuditStatus(meeting.id)?.status === 'auditing' ? (
+                  <><div className="loader-small" style={{ width: '16px', height: '16px', border: '2px solid white', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div> Auditing...</>
+                ) : getAuditStatus(meeting.id)?.status === 'completed' ? (
+                  <><FileText size={20} /> View AI Report</>
+                ) : (
+                  <><Bot size={20} /> Configure & Send</>
+                )}
               </button>
             </motion.div>
           ))

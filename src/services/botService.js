@@ -21,6 +21,7 @@ export const joinMeeting = async (meeting, user, customAgenda) => {
     transcription_enabled: true,
     transcription_config: { provider: "gladia" },
     extra: {
+      meeting_id: meeting.id,
       organizer_email: user?.email || meeting.organizer?.email || "ravinder.s.negi@intglobal.com",
       title: meeting.summary,
       agenda: customAgenda || meeting.description || "No description provided"
