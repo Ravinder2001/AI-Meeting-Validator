@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { FileText, Calendar, Clock, AlertTriangle, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { FileText, Calendar, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fetchPastMeetingReports } from '../services/auditService';
 import ReportModal from './ReportModal';

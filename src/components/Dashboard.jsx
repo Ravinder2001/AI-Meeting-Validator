@@ -55,7 +55,7 @@ const Dashboard = ({ token, logout, user }) => {
           style={{
             background: activeTab === 'upcoming' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
             color: activeTab === 'upcoming' ? '#818cf8' : 'var(--text-secondary)',
-            border: 'none',
+            // border: 'none',
             padding: '10px 20px',
             borderRadius: '12px',
             cursor: 'pointer',
@@ -73,7 +73,7 @@ const Dashboard = ({ token, logout, user }) => {
           style={{
             background: activeTab === 'past' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
             color: activeTab === 'past' ? '#818cf8' : 'var(--text-secondary)',
-            border: 'none',
+            // border: 'none',
             padding: '10px 20px',
             borderRadius: '12px',
             cursor: 'pointer',

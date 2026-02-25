@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { supabase } from './auditService';
+// import { supabase } from './auditService';
 
 // API URL (Proxied via package.json for local dev, via vercel.json for production)
 const MEETING_BAAS_API_URL = "/v2/bots";
