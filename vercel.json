@@ -6,7 +6,7 @@
     },
     {
       "source": "/webhook-test/:path*",
-      "destination": "https://n8n-q8ji.onrender.com/webhook-test/:path*"
+      "destination": "https://n8n-latest-l4y5.onrender.com/webhook-test/:path*"
     }
   ]
 }

@@ -9,7 +9,7 @@ A complete **End-to-End Meeting Intelligence System** that automates the lifecyc
 ### 1. 📅 Automated Meeting Pilot
 - **Direct Google Calendar Integration**: Fetches upcoming meetings securely.
 - **One-Click Join**: Instantly deploying an AI bot to Google Meet, Zoom, or Teams calls via **Meeting BaaS** API.
-- **Real-time Persistence**: Uses **Supabase** to track bot status instantly. Even if the page is refreshed, the system remembers which meetings are currently being audited.
+- **Smart Proxying**: Uses a robust proxy layer (Local & Vercel) to bypass CORS and securely route API requests.
 
 ### 2. 🧠 Granular AI Analysis (The "Autopilot" Engine)
 Instead of a generic summary, the system performs a **4-Step Deep Dive** on every meeting transcript:
@@ -18,35 +18,35 @@ Instead of a generic summary, the system performs a **4-Step Deep Dive** on ever
 3.  **Client Sentiment Analysis**: Detects underlying mood and signals from client statements (Positive/Neutral/Negative).
 4.  **Scope Creep Detection**: Identifies topics discussed that were *not* on the agenda.
 
-### 3. 📊 Interactive AI Reports & Dashboard
-- **View Report Button**: Once the audit is complete, a "View AI Report" button appears directly on the dashboard.
-- **Glassmorphism Modal**: Displays beautiful, structured reports with MoM, Decisions, and Action Items without leaving the page.
-- **Beautiful HTML Reports**: Still delivers a structured, colour-coded email report to the organizer.
+### 3. 📩 Beautiful HTML Reports
+- Delivers a structured, colour-coded **HTML Email Report** to the organizer immediately after the meeting.
+- Includes **Risk Scores**, **Compliance Badges**, and **Actionable Insights**.
 
 ### 4. 🎯 Mission Configuration & Agile Agendas
-- **Agile Meeting Context**: The **Mission Configuration Modal** allows users to inject a custom agenda or specific instructions right before the meeting starts.
-- **Smart HTML Stripping**: Automatically cleans raw Google Calendar HTML for a readable editing experience.
+- **Agile Meeting Context**: Not every meeting has a perfect calendar description. The **Mission Configuration Modal** allows users to inject a custom agenda or specific instructions right before the meeting starts.
+- **Dynamic Context Injection**: The AI auditor receives this custom context to tailor its analysis (e.g., "Focus on budget approval", or "Watch for client hesitation").
 
 ---
 
 ## 🏗️ Technical Architecture
 
 ### **Frontend (React)**
-- **Framework**: React 19
-- **Data Layer**: **Supabase-js** for direct, real-time database interaction.
+- **Framework**: React 19 (CRA)
 - **Styling**: Custom CSS variables, Glassmorphism UI, Framer Motion for animations.
 - **Authentication**: Google OAuth 2.0.
+- **API Handling**: Direct Axios calls with a **Local vs. Cloud Proxy Strategy**:
+    - **Development**: Uses the standardized `proxy` field in `package.json` to route `/v2/bots` requests to Meeting BaaS, bypassing local CORS issues.
+    - **Production**: Vercel Rewrites (`vercel.json`) handles the same routing, ensuring secure API communication on the live site.
 
-### **Automation & Persistence (n8n + Supabase)**
-- **Workflows**: `AI_Meeting_Autopilot.json` (Main Brain)
-- **Database**: **PostgreSQL (Supabase)** stores:
-    - `active_bots`: Tracks live auditing status.
-    - `meeting_reports`: Stores the final structured JSON analysis for instant UI retrieval.
+### **Automation (n8n Workflow)**
+- **File**: `AI_Meeting_Autopilot.json`
+- **Trigger**: Webhook from Meeting BaaS (when meeting ends).
 - **Process**:
-    1.  **Fetch Transcript**: Retrieves audio/text from Meeting BaaS.
-    2.  **Parallel AI Chains**: Runs 4 separate Gemini nodes for analysis.
-    3.  **DB Update**: Automatically upserts the final report into Supabase.
-    4.  **Email Delivery**: Sends the report via Gmail.
+    1.  **Fetch Transcript**: Retrieves audio/text from the bot.
+    2.  **Parallel Chains**: Runs 4 separate LangChain/Gemini nodes for specific analysis tasks.
+    3.  **Data Sanitization**: Custom code nodes to strip Markdown artifacts (`cleanJson` logic).
+    4.  **HTML Generation**: Assembles the final report dynamically.
+    5.  **Email Delivery**: Sends the report via Gmail.
 
 ---
 
@@ -94,7 +94,7 @@ The `vercel.json` file handles the API proxying for production:
 {
   "rewrites": [
     { "source": "/v2/bots", "destination": "https://api.meetingbaas.com/v2/bots" },
-    { "source": "/webhook-test/:path*", "destination": "https://n8n-q8ji.onrender.com/webhook-test/:path*" }
+    { "source": "/webhook-test/:path*", "destination": "https://n8n-latest-l4y5.onrender.com/webhook-test/:path*" }
   ]
 }
 ```

@@ -17,7 +17,7 @@ export const joinMeeting = async (meeting, user, customAgenda) => {
     recording_mode: "speaker_view",
     reserved: new Date(meeting.start.dateTime) > new Date(),
     entry_time: meeting.start.dateTime,
-    webhook_url: "https://n8n-q8ji.onrender.com/webhook/autopilot",
+    webhook_url: "https://n8n-latest-l4y5.onrender.com/webhook/autopilot",
     transcription_enabled: true,
     transcription_config: { provider: "gladia" },
     extra: {
