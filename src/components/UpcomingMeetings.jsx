@@ -55,8 +55,8 @@ const UpcomingMeetings = ({ token, user }) => {
     setProcessingId(meeting.id);
     setSelectedMeeting(null);
     
-    // Log optimistic start to DB via n8n
-    await logAuditStart(meeting.id, meeting.summary);
+    // Log optimistic start to DB via Supabase
+    await logAuditStart(meeting, user);
     
     toast.promise(joinMeeting(meeting, user, customAgenda), {
       loading: 'Summoning AI Meeting Auditor... 🤖',
@@ -154,25 +154,25 @@ const UpcomingMeetings = ({ token, user }) => {
                     handleInitiateJoin(meeting);
                   }
                 }}
-                disabled={processingId === meeting.id || getAuditStatus(meeting.id)?.status === 'auditing'}
+                disabled={processingId === meeting.id || getAuditStatus(meeting.id)?.status === 'pending' || getAuditStatus(meeting.id)?.status === 'auditing'}
                 style={{
                   width: '100%',
                   padding: '14px',
                   borderRadius: '12px',
                   border: 'none',
-                  background: (processingId === meeting.id || getAuditStatus(meeting.id)?.status === 'auditing') 
+                  background: (processingId === meeting.id || getAuditStatus(meeting.id)?.status === 'pending' || getAuditStatus(meeting.id)?.status === 'auditing') 
                     ? 'rgba(255,255,255,0.1)' 
                     : getAuditStatus(meeting.id)?.status === 'completed'
                     ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' // Green for completed
                     : 'var(--primary-gradient)',
                   color: 'white',
-                  cursor: (processingId === meeting.id || getAuditStatus(meeting.id)?.status === 'auditing') ? 'not-allowed' : 'pointer',
+                  cursor: (processingId === meeting.id || getAuditStatus(meeting.id)?.status === 'pending' || getAuditStatus(meeting.id)?.status === 'auditing') ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                   fontWeight: 600, fontSize: '1rem', transition: 'all 0.2s',
                   boxShadow: getAuditStatus(meeting.id)?.status === 'completed' ? '0 4px 12px rgba(16, 185, 129, 0.2)' : 'none'
                 }}
               >
-                {processingId === meeting.id || getAuditStatus(meeting.id)?.status === 'auditing' ? (
+                {processingId === meeting.id || getAuditStatus(meeting.id)?.status === 'pending' || getAuditStatus(meeting.id)?.status === 'auditing' ? (
                   <><div className="loader-small" style={{ width: '16px', height: '16px', border: '2px solid white', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div> Auditing...</>
                 ) : getAuditStatus(meeting.id)?.status === 'completed' ? (
                   <><FileText size={20} /> View AI Report</>
